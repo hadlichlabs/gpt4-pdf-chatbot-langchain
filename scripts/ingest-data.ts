@@ -1,3 +1,4 @@
+import { readFile } from 'fs/promises';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
@@ -8,15 +9,32 @@ import { DirectoryLoader } from 'langchain/document_loaders/fs/directory';
 
 /* Name of directory to retrieve your files from */
 const filePath = 'docs';
+const passwordFileName = 'passwords.txt'; // Add the name of your password file
+
+async function loadPasswords() {
+  const content = await readFile(`${filePath}/${passwordFileName}`, 'utf8');
+  return content
+    .trim()
+    .split('\n')
+    .reduce((acc, line) => {
+      const [filename, password] = line.split(':');
+      acc[filename] = password;
+      return acc;
+    }, {});
+}
 
 export const run = async () => {
   try {
+    const passwords = await loadPasswords();
+
     /*load raw docs from the all files in the directory */
     const directoryLoader = new DirectoryLoader(filePath, {
-      '.pdf': (path) => new CustomPDFLoader(path),
+      '.pdf': (path) => {
+        const password = passwords[path] || null;
+        return new CustomPDFLoader(path, password);
+      },
     });
 
-    // const loader = new PDFLoader(filePath);
     const rawDocs = await directoryLoader.load();
 
     /* Split text into chunks */

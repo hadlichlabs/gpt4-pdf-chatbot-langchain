@@ -29,12 +29,19 @@ export abstract class BufferLoader extends BaseDocumentLoader {
 }
 
 export class CustomPDFLoader extends BufferLoader {
+  constructor(
+    public filePathOrBlob: string | Blob,
+    public password: string | null = null // This line makes the password parameter optional
+  ) {
+    super(filePathOrBlob);
+  }
+
   public async parse(
     raw: Buffer,
     metadata: Document['metadata'],
   ): Promise<Document[]> {
     const { pdf } = await PDFLoaderImports();
-    const parsed = await pdf(raw);
+    const parsed = await pdf(raw, { password: this.password }); // If password is null, pdf() will be called without a password
     return [
       new Document({
         pageContent: parsed.text,
